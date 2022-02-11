@@ -1,0 +1,399 @@
+---
+title: "Foundations of inference"
+author: "STA 199"
+date: "2/17/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Main ideas
+
+- Understand statistical process terminology
+
+- Understand the types of conclusions that can be made given the underlying statistical process
+  
+## Coming Up
+
+- Midterm grades.
+- Lab 5 due on Friday.
+- HW 3 released, due next Thurs.
+- Lab next week focused on project.
+
+### Lecture Notes and Exercises
+
+We will use the packages below:
+  
+```{r load-packages, message=FALSE}
+library(tidyverse)
+```
+
+## Bayes' Rule
+
+- Last class we discussed Bayesian thinking.
+- Sometimes you have one conditional probability and want to find another.
+- P(A|B) = P(B|A)*P(A)/P(B)
+
+- Example
+
+```{r load-data, message=FALSE, warning=FALSE}
+sta199 <- read_csv("sta199-fa21-year-major.csv")
+```
+
+- Let's say you know the probability that someone is a first-year given they are in section 2 and want to find the probability that they are in section two given that they are a first year. 
+
+- We can actually just find this probability directly, but I want to illustrate the process.
+
+- What are P(B|A), P(B), P(A), and P(A|B) here?
+
+```{r p_b_given_a}
+b_given_a <- sta199 %>%
+  filter(section == "Section 02") %>%
+  count(year) %>%
+  mutate(prob = n / sum(n)) %>%
+  filter(year == "First-year")
+
+a <- sta199 %>%
+  count(section) %>%
+  mutate(prob = n / sum(n)) %>%
+  filter(section == "Section 02")
+  
+b <- sta199 %>%
+  count(year) %>%
+  mutate(prob = n / sum(n)) %>%
+  filter(year == "First-year")
+
+(b_given_a$prob*a$prob)/b$prob
+
+0.4459459 * 0.2995951/ 0.4574899
+```
+
+
+```{r check-work}
+sta199 %>%
+  filter(year == "First-year") %>%
+  count(section) %>%
+  mutate(prob = n / sum(n)) %>%
+  filter(section == "Section 02")
+```
+
+We can also use the hypothetical 10000 here.
+
+
+|             | Sec2  | Other    | Total |
+|-------------|-------|----------|-------|
+| **FY**      |  |     |   |
+| **Oth**     |   |     |   |
+| **Total**   |  |     |10,000 |
+
+Know prob(Fy)| prob(sect2)
+Want prob(sect2)|prob(fy)
+
+## The statistical process
+
+Statistics is a process that converts data into useful information, whereby
+practitioners
+
+1. form a question of interest,
+
+2. collect and summarize data,
+
+3. and interpret the results.
+
+## The population of interest
+
+The **population** is the group we'd like to learn something about. For 
+example:
+
+- What is the prevalence of diabetes among **U.S. adults**, and has it changed
+  over time? 
+  
+- Does the average amount of caffeine vary by vendor in **12 oz. cups of**
+  **coffee at Duke coffee shops**?
+  
+- Is there a relationship between age and partisanship among **US voters.**
+
+The **research question of interest** is what we want to answer - often 
+relating one or more numerical quantities or summary statistics.
+
+If we had data from every unit in the population, we could just calculate what we wanted and be done!
+
+## Sampling from the population
+
+Unfortunately, we (usually) have to settle with a **sample** from the population.
+
+Ideally, the sample is **representative**, allowing us to make conclusions that are .**generalizable** to the broader population of interest. 
+
+In order to make a formal statistical statement about the broader population of interest when all we have is a sample, we need to use the tools of probability and statistical inference.
+
+
+## Big picture
+
+```{r echo=FALSE, fig.width=12}
+set.seed(234)
+pop <- tibble(
+  x = rnorm(1000, sd = 10),
+  y = rnorm(1000),
+  s = sample(rep(c(0, 1), times = c(950, 50)), size = 1000)
+)
+p1 <- ggplot(pop, aes(x = x, y = y)) +
+  geom_point(color = "blue", size = 2, alpha = .5) +
+  labs(title = "Population of interest", x = "", y = "") +
+  theme_void()
+p_arrow <- ggplot() +
+  annotate(geom = "segment", x = 0, xend = 4, y = 0, 
+           yend = 0, color = "black",
+           size = 1, arrow = arrow()) +
+  theme_void()
+p2 <- ggplot(pop, aes(x = x, y = y, alpha = factor(s))) +
+  geom_point(color = "red", size = 2) +
+  scale_alpha_manual(values = c(0, 1)) +
+  labs(title = "Sample", x = "", y = "") +
+  theme_void() +
+  theme(legend.position = "none")
+
+p1 
+p_arrow 
+p2
+```
+
+We'll discuss a few population characteristics we'll be interested in.
+
+## Explanatory and response variables
+
+When we suspect one variable might causally affect another, we label the first variable the **explanatory variable** and the second the 
+**response variable** Sometimes, you may also hear the term "independent variable" used instead of explanatory variable and "dependent variable" used instead of response variable.Whether or not we can actually make a causal 
+connection will depend on the type of statistical study (more on this shortly).
+
+<br/>
+
+$$\mbox{Explanatory Variable} \longrightarrow \mbox{Response Variable}$$
+
+<br/>
+
+Do larger homes in good locations lead to higher home selling prices? What
+are the explanatory and response variables?
+
+
+## Population, parameter; sample, statistic
+
+**Population**: a group of individuals or objects we are interested in 
+studying
+
+**Parameter**: a numerical quantity derived from the population
+(almost always unknown)
+
+  - Associate the parameter with the population
+
+  - Parameters could be the mean, median, correlation, maximum, etc.
+
+If we had data from every unit in the population, we could just calculate population parameters and be done! **Unfortunately, we usually cannot do this.**
+
+**Sample**: a subset of our population of interest
+
+**Statistic**: a numerical quantity derived from a sample:
+  - Associate the statistic with the sample
+
+  - Statistics could be the mean, median, correlation, maximum, etc.
+  
+
+Naturally, it makes sense to use the sample mean (and other quantities 
+derived from the sample) to make generalizations about the population mean.
+
+
+## Statistical inference
+
+**Statistical inference** is the process of using sample data to make conclusions about the underlying population the sample came from.
+
+- **Estimation**: estimating an unknown parameter based on values from the
+  sample at hand
+
+- **Testing**: evaluating whether our observed sample provides evidence 
+  for or against some claim about the population
+  
+In the coming lectures we'll discuss each of these inference approaches.
+
+Before we get into this, let's discuss ways samples can be obtained and
+what type of conclusions we'll be be able to make and **not** make as a result
+of our statistical process.
+
+# Sampling 
+
+## Sampling strategies
+
+- In our discussions on probability, we considered randomly selecting individuals from studies, where each individual was equally likely to be selected. This form of random sampling is known as **simple random sampling.**
+  
+- **Stratified sampling** divides the population into **strata** such that each strata is homogeneous. Then a simple random sample is applied within each stratum.
+
+  - Can you think of a reason why we would employ this technique?
+  
+Sometimes this is done to make sure you get a sufficient sample from each demographic group and then you weight to the approximate percentage in the population.
+
+- **Cluster sampling** first partitions the population into **clusters**, where each cluster is representative of the population. A fixed number of clusters is selected and all observations within the cluster
+  are included in the sample.
+  
+- **Multistage sampling** is similar to cluster sampling, but rather than
+  keep all observations in each cluster, only a random sample of observations
+  is kept.
+
+## Example
+
+Suppose we are interested in estimating the malaria rate in a densely tropical portion of rural Indonesia. We learn that there are 30 villages in that part 
+of the Indonesian jungle, each more or less similar to the next. Our goal is to test 150 individuals for malaria. What are the costs and benefits to using
+the four aforementioned sampling techniques?
+
+- Simple random sample: expensive, may not get good representation from all
+  30 villages
+  
+- Stratified sample: not clear how to build strata on an individual basis. 
+  If strata are the villages, then some villages will be left out.
+  
+- Cluster sample / multistage: these are the best options here.
+
+## Sample bias
+
+- The four sampling strategies help reduce **bias** in our sample. A biased
+  sample can lead to erroneous conclusions.
+  
+- Bias can still appear if the non-response rate is very high. 
+    - Is our sample representative of the population or is it representative of the population that "responded" to the survey?
+  
+```{r echo=FALSE, fig.width=12, fig.height=5}
+set.seed(234)
+pop <- tibble(
+  x = rnorm(1000, sd = 10),
+  y = rnorm(1000),
+  r = sample(rep(c(0, 1), times = c(700, 300)), size = 1000),
+  s = sample(rep(c(0, 1), times = c(950, 50)), size = 1000)
+)
+p1 <- ggplot(pop, aes(x = x, y = y)) +
+  geom_point(color = "blue", size = 2, alpha = .5) +
+  labs(title = "Population of interest", x = "", y = "") +
+  theme_void()
+p2 <- ggplot(pop, aes(x = x, y = y, alpha = factor(r))) +
+  geom_point(color = "blue", size = 2) +
+  scale_alpha_manual(values = c(0, .5)) +
+  labs(title = "Population actually sampled", x = "", y = "") +
+  theme_void() +
+  theme(legend.position = "none")
+p_arrow <- ggplot() +
+  annotate(geom = "segment", x = 0, xend = 1, y = 0, 
+           yend = 0, color = "black",
+           size = 1, arrow = arrow()) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "null"))
+p3 <- ggplot(pop, aes(x = x, y = y, alpha = factor(s))) +
+  geom_point(color = "red", size = 2) +
+  scale_alpha_manual(values = c(0, 1)) +
+  labs(title = "Sample", x = "", y = "") +
+  theme_void() +
+  theme(legend.position = "none")
+p1 
+p_arrow
+p2 
+p_arrow 
+p3
+```
+
+
+# Statistical studies and conclusions
+
+
+## Observational studies and experiments
+
+- Observational
+
+    - Collect data in a way that does not interfere with how the data arise 
+      ("observe")
+    - Only establish an **association**
+    - Data often cheaper and easier to collect
+
+- Experimental
+
+    - Randomly assign subjects to treatments
+    - Establish **causal connections**
+    - Often more expensive
+    - Sometimes it is impossible or unethical to design an experiment
+
+## Random sampling vs. random assignment
+
+What do you think Pfizer did in their trials for the COVID-19 vaccine development? 
+
+It was an experimental design.
+
+## Confounding variables
+
+A **confounding** variable is an an extraneous variable that affects both 
+the explanatory and the response variable, and makes it seem like there is 
+a relationship between them.
+
+Identify the confounding variable in each of the following statements:
+
+1. As the amount of ice cream sales increases, the number of shark attacks also increases.
+
+This both increase in the summer, when people go to the beach.
+
+2. The higher the number of firefighters at a fire is, the greater the amount 
+   of damage caused by that fire.
+
+More firefighters are sent to more severe fires.
+
+3. Taller children are better at both reading and math compared to shorter  children.
+  
+Taller children are also usually older and in more advanced grades.
+
+One method to justify making causal conclusions from observational studies is 
+to exhaust the search for confounding variables, there is no guarantee that all confounding variables can be examined or measured. Therefore, it is best
+to only discuss associations between variables from observational studies.
+
+# Practice:
+
+## Polls and statistical terminology
+
+Go to the Monmouth University Polling Institute 
+[website](https://www.monmouth.edu/polling-institute/reports/) and select a 
+poll of interest. Briefly read the poll results and methodology section at the
+end. Try and identify the following:
+
+Here's one example from earlier this year (use a different one)
+
+- Population of interest: US registered voters.
+
+- Parameter of interest: Proportion approving of President Biden's job performance.
+
+- Sample: US registered voters.
+
+- Sample size: 802
+
+- Sample statistic: Proportion approving of President Biden's job performance.
+
+- Sample statistic's value: 51% or 0.51.
+
+Link to poll: https://www.monmouth.edu/polling-institute/reports/monmouthpoll_us_030321/
+
+## Discuss your survey here
+
+[Answers will vary.]
+
+# Confounding variables
+
+A group of researchers decide to study the causes of heart disease by carrying out an observational study. The researchers find that the people in their study who ate lots of red meat also developed heart disease. They believe they have found a link (or ‘correlation’) between eating red meat and developing heart disease, and they (or those reading their research) might be tempted to conclude that eating lots of red meat is a cause of heart disease. However, 
+before making a conclusion like this, the researchers must think about confounding factors (variables).
+
+List three confounding factors that could be at play here.
+
+There are many you could list, but three are:
+
+1. Amount of exercise
+
+2. Age
+
+3. Gender
+
+Given that the above study was observational, what type of conclusion can be made? 
+
+We only can see correlations, but cannot make claims about causality.
+
+# References
+
+1. https://www.understandinghealthresearch.org/useful-information/confounders-17
